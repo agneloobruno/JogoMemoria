@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo da Memória Multiplayer</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+    <div class="container">
+        <h1>🎮 Jogo da Memória</h1>
+        <div class="scoreboard">
+            <div id="p1-score" class="player-card">Jogador 1: 0 pts</div>
+            <div id="turn-indicator">Vez de: ...</div>
+            <div id="p2-score" class="player-card">Jogador 2: 0 pts</div>
+        </div>
+
+        <div id="status-message" class="status">Conectando...</div>
+        
+        <div id="status-message" class="status">Conectando...</div>
+        
+        <div id="game-board" class="board"></div>
+        
+        <div id="player-info" class="info">
+            Aguardo oponente...
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>

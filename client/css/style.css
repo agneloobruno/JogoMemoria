@@ -1,0 +1,104 @@
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #2c3e50;
+    color: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    margin: 0;
+}
+
+.container {
+    text-align: center;
+}
+
+.status {
+    background-color: #f39c12;
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    font-weight: bold;
+}
+
+/* O TABULEIRO (GRID) */
+.board {
+    display: grid;
+    grid-template-columns: repeat(4, 100px); /* 4 colunas de 100px */
+    gap: 10px;
+    margin: 0 auto;
+    background-color: #34495e;
+    padding: 15px;
+    border-radius: 10px;
+}
+
+/* A CARTA */
+.card {
+    width: 100px;
+    height: 100px;
+    background-color: #ecf0f1;
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 40px; /* Tamanho do emoji */
+    cursor: pointer;
+    border: 3px solid #bdc3c7;
+    transition: transform 0.2s;
+    background-color: #34495e; /* Cor escura quando virada para baixo */
+    color: transparent; /* Esconde o emoji */
+    transition: transform 0.3s, background-color 0.3s;
+}
+
+/* Nova classe para quando a carta está virada PARA CIMA */
+.card.flipped {
+    background-color: #ecf0f1; /* Cor clara */
+    color: black; /* Mostra o emoji */
+    transform: rotateY(180deg); /* Efeito 3D opcional */
+}
+
+/* Nova classe para par encontrado */
+.card.matched {
+    background-color: #2ecc71; /* Verde de sucesso */
+    color: black;
+    border-color: #27ae60;
+}
+
+.card:hover {
+    transform: scale(1.05);
+    border-color: #3498db;
+}
+
+.info {
+    margin-top: 20px;
+    font-size: 1.2rem;
+}
+
+.scoreboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 420px; /* Largura do tabuleiro */
+    margin: 10px auto;
+    color: white;
+}
+
+.player-card {
+    background: #34495e;
+    padding: 10px;
+    border-radius: 5px;
+    border: 2px solid transparent;
+}
+
+/* Destaca quem está jogando agora */
+.active-turn {
+    border-color: #f1c40f; /* Amarelo */
+    background-color: #2c3e50;
+    font-weight: bold;
+    box-shadow: 0 0 10px #f1c40f;
+}
+
+#turn-indicator {
+    font-size: 0.9em;
+    color: #bdc3c7;
+}
