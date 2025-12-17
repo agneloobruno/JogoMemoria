@@ -45,6 +45,22 @@ io.on('connection', (socket) => {
             // Avisa TODO MUNDO (broadcast) quantos jogadores tem agora
             io.emit('update_players', game.getGameState());
 
+            // Marca esse jogador como "Pronto"
+            socket.on('player_ready', () => {
+                const allReady = game.playerReady(socket.id);
+                // Avisa TODO MUNDO quantos jogadores estão prontos
+                io.emit('update_players', game.getGameState());
+
+                if (allReady) {
+                    game.generateBoard(); // Isso já dispara o timer interno
+                    io.emit('game_start', {
+                        message: 'Valendo!',
+                        gameState: game.getGameState()
+                    });
+                }
+            });
+                
+
             socket.on('flip_card', (cardId) => {
             if (!game.gameActive) return;
 
@@ -62,6 +78,10 @@ io.on('connection', (socket) => {
                     game.nextTurn(); // Passa a vez porque errou
                     io.emit('update_game_status', game.getGameState());
                 }, 1500); // 1.5s para ver o erro
+            }
+            
+            if (result.action === 'GAME_OVER') {
+                io.emit('game_over', game.getGameState());
             }
         });
 
