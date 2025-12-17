@@ -3,18 +3,16 @@ class GameManager {
         this.players = [];
         this.maxPlayers = 2;
         this.readyPlayers = new Set();
-
         this.cards = [];
         this.gameActive = false;
         
         this.flippedCards = [];
-        this.currentPlayerIndex = 0; // 0 = Jogador 1, 1 = Jogador 2
-        this.turnTimer = null;       // O relógio do servidor
-        this.turnStartTime = 0;      // Para calcular pontuação
-        this.TURN_LIMIT = 15000;     // 15 segundos por jogada
-        this.turnDeadLine = 0;    // Timestamp de quando a vez acaba
+        this.currentPlayerIndex = 0; 
+        this.turnTimer = null;       
+        this.turnStartTime = 0;      
+        this.TURN_LIMIT = 15000;     
+        this.turnDeadline = 0;
         
-        // Callback para avisar o app.js que o tempo acabou
         this.onTurnTimeout = onTurnTimeout; 
     }
 
@@ -23,22 +21,19 @@ class GameManager {
             return { success: false, message: 'Sala cheia!' };
         }
         
-        // CORREÇÃO: Verifica se o Jogador 1 já existe na sala
+        // Verifica se o Jogador 1 já existe para atribuir o número correto
         const hasPlayer1 = this.players.some(p => p.playerNumber === 1);
-        
-        // Se o 1 já existe, esse novo será o 2. Se não, será o 1.
         const assignedNumber = hasPlayer1 ? 2 : 1;
 
         const newPlayer = {
             id: id,
             score: 0,
-            playerNumber: assignedNumber, // Usa o número calculado corretamente
+            playerNumber: assignedNumber,
             isReady: false
         };
         
-        // Dica extra: Garantir que a lista fique ordenada (P1 sempre no índice 0, P2 no índice 1)
-        // Isso ajuda a não bagunçar os turnos
         this.players.push(newPlayer);
+        // Ordena para garantir que P1 seja sempre o índice 0 e P2 o índice 1
         this.players.sort((a, b) => a.playerNumber - b.playerNumber);
 
         return { success: true, player: newPlayer };
@@ -49,15 +44,14 @@ class GameManager {
         const wasGameActive = this.gameActive;
 
         if (playerIndex !== -1) {
-            this.players.splice(playerIndex, 1); // Remove o jogador
+            this.players.splice(playerIndex, 1);
             this.readyPlayers.delete(id);
         }
 
         if (wasGameActive) {
             this.stopTurnTimer();
             this.gameActive = false;
-            // Retorna TRUE para avisar o app.js que precisamos declarar W.O.
-            return { action: 'WO_VICTORY' }; 
+            return { action: 'WO_VICTORY' }; // Vitória por abandono
         }
 
         return { action: 'PLAYER_REMOVED' };
@@ -82,23 +76,21 @@ class GameManager {
         }));
 
         this.gameActive = true;
-        this.currentPlayerIndex = 0; // Começa pelo Jogador 1
-        this.startTurnTimer();       // Inicia o cronômetro do primeiro turno
+        this.currentPlayerIndex = 0;
+        this.startTurnTimer();
         
         return this.cards;
     }
 
-    // --- CONTROLE DE TEMPO ---
     startTurnTimer() {
-        this.stopTurnTimer(); // Garante que não tem dois relógios rodando
-        this.turnStartTime = Date.now(); // Marca a hora que começou
-        this.turnDeadLine = Date.now() + this.TURN_LIMIT;
+        this.stopTurnTimer();
+        this.turnStartTime = Date.now(); 
+        this.turnDeadline = Date.now() + this.TURN_LIMIT;
 
-        // Configura o "Alarme" para daqui 15 segundos
         this.turnTimer = setTimeout(() => {
-            console.log("Tempo esgotado!");
-            this.nextTurn(); // Troca de jogador
-            if (this.onTurnTimeout) this.onTurnTimeout(); // Avisa o app.js
+            console.log("Tempo esgotado! Trocando turno...");
+            this.nextTurn();
+            if (this.onTurnTimeout) this.onTurnTimeout();
         }, this.TURN_LIMIT);
     }
 
@@ -107,22 +99,16 @@ class GameManager {
     }
 
     nextTurn() {
-        // CORREÇÃO: Antes de trocar de jogador, fecha as cartas que sobraram abertas
-        this.resetFlippedCards(); 
-
-        // Alterna entre 0 e 1
+        this.resetFlippedCards(); // Fecha as cartas abertas
         this.currentPlayerIndex = this.currentPlayerIndex === 0 ? 1 : 0;
-            
-        // Inicia o tempo do próximo
-        this.startTurnTimer(); 
-        }
+        this.startTurnTimer();
+    }
 
-    // --- LÓGICA DO CLIQUE ATUALIZADA ---
     flipCard(cardId, playerId) {
-        // 1. Valida se é a vez desse jogador
         const currentPlayer = this.players[this.currentPlayerIndex];
+        
         if (!currentPlayer || playerId !== currentPlayer.id) {
-            return { action: 'IGNORE' }; // Não é a vez dele
+            return { action: 'IGNORE' };
         }
 
         const card = this.cards.find(c => c.id === cardId);
@@ -137,36 +123,30 @@ class GameManager {
             return { action: 'WAITING_SECOND_CARD' };
         }
 
-        // --- VALIDAR PAR E CALCULAR PONTOS ---
         const card1 = this.flippedCards[0];
         const card2 = this.flippedCards[1];
 
-        this.stopTurnTimer(); // Para o tempo enquanto processa o resultado
+        this.stopTurnTimer();
 
         if (card1.icon === card2.icon) {
-            // ACERTOU!
             card1.isMatched = true;
             card2.isMatched = true;
 
-            // Cálculo: Base 100 - (Segundos gastos * 5)
-            // Ex: Gastou 2s -> 100 - 10 = 90 pontos
             const timeTaken = (Date.now() - this.turnStartTime) / 1000;
             const points = Math.max(10, Math.floor(100 - (timeTaken * 5))); 
             
             this.players[this.currentPlayerIndex].score += points;
-            
             this.flippedCards = [];
 
             const allMatched = this.cards.every(c => c.isMatched);
             if (allMatched) {
-                this.gameActive = false; // Fim de jogo
+                this.gameActive = false;
                 return { action: 'GAME_OVER' };
             }
 
-            this.startTurnTimer(); // Continua a vez do mesmo jogador
+            this.startTurnTimer();
             return { action: 'MATCH' };
         } else {
-            // ERROU! (O nextTurn será chamado pelo app.js após o delay visual)
             return { action: 'MISMATCH' };
         }
     }
@@ -181,16 +161,29 @@ class GameManager {
             players: this.players,
             board: this.cards,
             gameActive: this.gameActive,
-            currentPlayerId: this.players[this.currentPlayerIndex]?.id, // Quem joga agora?
-            turnDeadline: this.turnDeadLine, // Para o front mostrar barra de tempo
+            currentPlayerId: this.players[this.currentPlayerIndex]?.id,
+            turnDeadline: this.turnDeadline,
             winner: this.getWinner()
         };
     }
 
+    // --- CORREÇÃO PRINCIPAL AQUI ---
     getWinner() {
-        if (this.gameActive) return null;
-        if (this.players.length < 2) return null;
-        return this.players.reduce((prev, current) => (prev.score > current.score) ? prev : current);
+        // Se o jogo está ativo ou não tem jogadores, retorna nulo
+        if (this.gameActive || !this.players || this.players.length === 0) return null;
+
+        try {
+            // Se sobrou só 1, ele ganhou (W.O)
+            if (this.players.length === 1) return this.players[0];
+
+            // Compara pontuação (CORRIGIDO: removemos o .apply que causava o erro)
+            return this.players.reduce((prev, current) => {
+                return (prev.score > current.score) ? prev : current;
+            });
+        } catch (error) {
+            console.error("Erro ao calcular vencedor:", error);
+            return this.players[0]; // Retorno de segurança
+        }
     }
 }
 
