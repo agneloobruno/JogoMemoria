@@ -10,10 +10,34 @@
 
     <div class="container">
         <h1>🎮 Jogo da Memória</h1>
-        <div class="scoreboard">
-            <div id="p1-score" class="player-card">Jogador 1: 0 pts</div>
-            <div id="turn-indicator">Vez de: ...</div>
-            <div id="p2-score" class="player-card">Jogador 2: 0 pts</div>
+
+        <div id="lobby-screen">
+            <h2>Sala de Espera</h2>
+            <div id="player-list">Aguardando jogadores...</div>
+            <button id="btn-ready" class="btn-start" disabled>Estou Pronto!</button>
+            <p class="waiting-msg" id="waiting-msg">Esperando jogadores...</p>
+        </div>
+
+        <div id="game-screen" class="hidden">
+            <div class="scoreboard">
+                <div id="p1-score" class="player-card">Jogador 1: 0 pts</div>
+
+                <div id="turn-info">
+                    <div id="turn-text">VEZ DO JOGADOR 1</div>
+                    <div id="timer">15s</div>
+                </div>
+
+                <div id="p2-score" class="player-card">Jogador 2: 0 pts</div>
+            </div>
+
+            <div id="game-board" class="board"></div>
+
+            <div id="game-over-screen" class="hidden modal">
+                <h2>🏆Fim de Jogo!</h2>
+                <h1 id="winner-text"> Jogador X Venceu!</h1>
+                <p id="final-scores">Placar Final: 0 x 0</p>
+                <button onclick="location.reload()">Jogar Novamente</button>
+            </div>
         </div>
 
         <div id="status-message" class="status">Conectando...</div>

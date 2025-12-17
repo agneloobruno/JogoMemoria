@@ -24,12 +24,32 @@ body {
 /* O TABULEIRO (GRID) */
 .board {
     display: grid;
-    grid-template-columns: repeat(4, 100px); /* 4 colunas de 100px */
+    grid-template-columns: repeat(4, 100px);
     gap: 10px;
-    margin: 0 auto;
+    margin: 20px auto;
     background-color: #34495e;
     padding: 15px;
     border-radius: 10px;
+    /* Bloqueia cliques por padrão, liberamos via JS na vez certa */
+    pointer-events: none; 
+    opacity: 0.5;
+}
+
+.board.active {
+    pointer-events: auto;
+    opacity: 1;
+    cursor: pointer;
+}
+
+.modal {
+    position: fixed;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(0,0,0,0.9);
+    padding: 40px;
+    border-radius: 20px;
+    text-align: center;
+    border: 2px solid #f1c40f;
 }
 
 /* A CARTA */
@@ -101,4 +121,59 @@ body {
 #turn-indicator {
     font-size: 0.9em;
     color: #bdc3c7;
+}
+
+.hidden { display: none !important; }
+
+/* BOTÕES E LOBBY */
+.btn-start {
+    padding: 15px 30px;
+    font-size: 1.2rem;
+    background-color: #27ae60;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 20px;
+}
+.btn-start:disabled { background-color: #95a5a6; cursor: not-allowed; }
+.btn-start.ready { background-color: #f39c12; } /* Amarelo quando clicado */
+
+/* PLACAR E TIMER */
+.scoreboard {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 500px;
+    margin: 10px auto;
+}
+
+.turn-info {
+    text-align: center;
+    background: #2c3e50;
+    padding: 10px;
+    border-radius: 10px;
+    border: 2px solid #7f8c8d;
+}
+
+#timer {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #e74c3c;
+}
+
+.player-card {
+    background: #34495e;
+    padding: 15px;
+    border-radius: 8px;
+    font-size: 1.2rem;
+    min-width: 80px;
+}
+
+/* DESTAQUE DE QUEM ESTÁ JOGANDO */
+.active-turn {
+    border: 3px solid #f1c40f;
+    box-shadow: 0 0 15px rgba(241, 196, 15, 0.6);
+    transform: scale(1.1);
+    transition: all 0.3s;
 }
