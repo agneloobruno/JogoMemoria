@@ -1,13 +1,54 @@
 // Conecta ao servidor rodando localmente
 const socket = io('http://localhost:3000');
 
-const statusDiv = document.getElementById('status-message');
-const boardDiv = document.getElementById('game-board');
+//Elementos do DOM
+const lobbyScreen = document.getElementById('lobby-screen');
+const gameScreen = document.getElementById('game-screen');
+const gameOverScreen = document.getElementById('game-over-screen');
+const btnReady = document.getElementById('btn-ready');
+const playerListDiv = document.getElementById('player-list');
+
 const p1ScoreDiv = document.getElementById('p1-score');
 const p2ScoreDiv = document.getElementById('p2-score');
+const timerDiv = document.getElementById('timer');
+const turnTextDiv = document.getElementById('turn-text');
+const boardDiv = document.getElementById('game-board');
+const statusDiv = document.getElementById('status-message');
 const turnDiv = document.getElementById('turn-indicator');
 
 let myId = null;
+let timerInterval = null;
+
+//-- EVENTOS DO LOBBY --
+socket.on('player_connected', (data) => {
+    myId = data.myId; // Salva meu ID
+    document.title = `Jogador ${data.playerNumber}`;
+});
+
+socket.on('update_players', (gameState) => {
+    //Atualiza a lista de jogadores no lobby
+    const p1 = gameState.players.find(p => p.playerNumber === 1);
+    const p2 = gameState.players.find(p => p.playerNumber === 2);
+
+    let html = '';
+    if (p1) html += `<p>🐶 Jogador 1: ${p1.isReady ? '✅ PRONTO' : '⏳ Aguardando...'}</p>`;
+    if (p2) html += `<p>🐱 Jogador 2: ${p2.isReady ? '✅ PRONTO' : '⏳ Aguardando...'}</p>`;
+
+    playerListDiv.innerHTML = html;
+
+    //Só libera o botão se tiver menos de 2 jogadores
+    if (gameState.players.length === 2) {
+        document.getElementById('waiting-msg').textContent = "Todos na sala! Clique em 'Pronto' quando estiver preparado.";
+        btnReady.disabled = false;
+    }
+});
+
+btnReady.onclick = () => {
+    socket.emit('player_ready');
+    btnReady.textContent = "Aguardando o outro jogador...";
+    btnReady.classList.add('ready');
+    btnReady.disabled = false;
+};
 
 // 1. Ao conectar, o servidor manda "player_connected" (definimos isso no app.js)
 socket.on('player_connected', (data) => {
@@ -25,12 +66,11 @@ socket.on('update_players', (gameState) => {
 
 // 3. O GRANDE MOMENTO: O jogo começa!
 socket.on('game_start', (data) => {
-    console.log('Jogo começou! Cartas recebidas:', data.board);
+    // Troca de tela: Esconde Lobby, Mostra Jogo
+    lobbyScreen.classList.add('hidden');
+    gameScreen.classList.remove('hidden');
     
-    statusDiv.textContent = data.message;
-    infoDiv.textContent = "O jogo começou! Valide se as cartas são iguais nas duas telas.";
-    
-    renderBoard(data.board);
+    updateUI(data.gameState);
 });
 
 // 4. Erro se a sala estiver cheia
@@ -56,76 +96,123 @@ socket.on('game_start', (data) => {
     updateUI(data.gameState);
 });
 
-socket.on('turn_timeout', (data) => {
-    alert(data.message); // Um alerta simples quando o tempo acaba
+socket.on('turn_timeout', () => {
+    // Animação visual opcional de erro
+    timerDiv.style.color = 'red';
 });
 
-function updateUI(gameState) {
-    // 1. Atualiza Placar
+socket.on('game_over', (gameState) => {
+    // Troca de tela
+    gameScreen.classList.add('hidden');
+    gameOverScreen.classList.remove('hidden');
+
+    const winner = gameState.winner;
+    const myWinner = (winner && winner.id === myId);
+    
+    // VERIFICAÇÃO 1: Definir a mensagem de título
+    const winnerTextElement = document.getElementById('winner-text');
+    
+    if (winner) {
+        // Se temos menos de 2 jogadores, alguém saiu (W.O.)
+        const isWO = gameState.players.length < 2; 
+
+        if (myWinner) {
+            winnerTextElement.textContent = isWO ? "🎉 VITÓRIA (Por W.O.)!" : "🎉 VOCÊ GANHOU!";
+            winnerTextElement.style.color = "#2ecc71"; // Verde
+        } else {
+            winnerTextElement.textContent = "💀 VOCÊ PERDEU!";
+            winnerTextElement.style.color = "#e74c3c"; // Vermelho
+        }
+    } else {
+        winnerTextElement.textContent = "🤝 EMPATE!";
+        winnerTextElement.style.color = "#f1c40f"; // Amarelo
+    }
+
+    // VERIFICAÇÃO 2: Mostrar placar com segurança (evita o erro undefined)
     const p1 = gameState.players.find(p => p.playerNumber === 1);
     const p2 = gameState.players.find(p => p.playerNumber === 2);
     
-    if(p1) p1ScoreDiv.textContent = `P1: ${p1.score} pts`;
-    if(p2) p2ScoreDiv.textContent = `P2: ${p2.score} pts`;
+    // Usamos '?' (optional chaining) para não quebrar se o jogador não existir
+    // Se o jogador saiu, mostramos "Saiu" em vez dos pontos
+    const p1Score = p1 ? `${p1.score} pts` : '(Saiu da partida)';
+    const p2Score = p2 ? `${p2.score} pts` : '(Saiu da partida)';
 
-    // 2. Avisa de quem é a vez
-    const isMyTurn = gameState.currentPlayerId === myId;
+    document.getElementById('final-scores').innerHTML = `
+        <p style="margin: 10px 0; font-size: 1.2em;">🐶 Jogador 1: <strong>${p1Score}</strong></p>
+        <p style="margin: 10px 0; font-size: 1.2em;">🐱 Jogador 2: <strong>${p2Score}</strong></p>
+    `;
+});
+
+
+// -- FUNÇÕES DE UI E TIMER -- 
+function updateUI(gameState) {
+    // 1. Renderiza Placar
+    const p1 = gameState.players.find(p => p.playerNumber === 1);
+    const p2 = gameState.players.find(p => p.playerNumber === 2);
     
-    // Destaca visualmente no placar
-    if (gameState.currentPlayerId === p1?.id) {
+    if(p1) p1ScoreDiv.textContent = `P1: ${p1.score}`;
+    if(p2) p2ScoreDiv.textContent = `P2: ${p2.score}`;
+
+    // 2. Controla de quem é a vez
+    const isMyTurn = gameState.currentPlayerId === myId;
+    const isP1Turn = gameState.currentPlayerId === p1?.id;
+
+    if (isP1Turn) {
         p1ScoreDiv.classList.add('active-turn');
         p2ScoreDiv.classList.remove('active-turn');
+        turnTextDiv.textContent = "VEZ DO JOGADOR 1";
     } else {
         p2ScoreDiv.classList.add('active-turn');
         p1ScoreDiv.classList.remove('active-turn');
+        turnTextDiv.textContent = "VEZ DO JOGADOR 2";
     }
 
+    // 3. Bloqueio/Desbloqueio do Tabuleiro
     if (isMyTurn) {
-        turnDiv.textContent = "SUA VEZ! 🟢";
-        boardDiv.style.opacity = "1";
-        boardDiv.style.pointerEvents = "auto"; // Libera cliques
+        boardDiv.classList.add('active'); // Opacidade 1, cliques liberados
+        turnTextDiv.style.color = "#2ecc71";
+        turnTextDiv.textContent += " (VOCÊ)";
     } else {
-        turnDiv.textContent = "Vez do Oponente 🔴";
-        boardDiv.style.opacity = "0.7"; // Deixa meio transparente
-        boardDiv.style.pointerEvents = "none"; // BLOQUEIA CLIQUES (Importante!)
+        boardDiv.classList.remove('active'); // Opacidade 0.5, cliques bloqueados
+        turnTextDiv.style.color = "#e74c3c";
     }
 
+    // 4. Inicia Timer Visual
+    startVisualTimer(gameState.turnDeadline);
+
+    // 5. Desenha Cartas
     renderBoard(gameState.board);
 }
 
-// Função Auxiliar para desenhar o HTML das cartas
+function startVisualTimer(deadline) {
+    if (timerInterval) clearInterval(timerInterval);
+
+    timerInterval = setInterval(() => {
+        const now = Date.now();
+        const timeLeft = Math.max(0, Math.ceil((deadline - now) / 1000));
+        
+        timerDiv.textContent = timeLeft + "s";
+
+        if (timeLeft <= 5) timerDiv.style.color = "red";
+        else timerDiv.style.color = "white";
+
+        if (timeLeft === 0) clearInterval(timerInterval);
+    }, 100); // Atualiza a cada 100ms para ser fluido
+}
+
 function renderBoard(cards) {
     boardDiv.innerHTML = ''; 
-
     cards.forEach(card => {
         const cardElement = document.createElement('div');
         cardElement.classList.add('card');
         
-        // Se isFlipped (virada) ou isMatched (já achada), mostramos o conteúdo
         if (card.isFlipped || card.isMatched) {
             cardElement.classList.add('flipped');
             cardElement.textContent = card.icon;
-            
-            if (card.isMatched) {
-                cardElement.classList.add('matched');
-            }
-        } else {
-            // Se não, ela fica "escondida" (sem classe flipped e sem texto)
-            cardElement.textContent = ''; 
+            if (card.isMatched) cardElement.classList.add('matched');
         }
 
-        // Adiciona evento de clique
-        cardElement.onclick = () => {
-            // Envia para o servidor qual ID foi clicado
-            // Nota: parseInt garante que enviamos um número, não texto
-            socket.emit('flip_card', card.id);
-        };
-
+        cardElement.onclick = () => socket.emit('flip_card', card.id);
         boardDiv.appendChild(cardElement);
     });
 }
-
-// Atualizar o tabuleiro quando o servidor envia update_board
-socket.on('update_board', (board) => {
-    renderBoard(board);
-});

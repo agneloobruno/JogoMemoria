@@ -19,22 +19,48 @@ class GameManager {
     }
 
     addPlayer(id) {
-        if (this.players.length >= this.maxPlayers) return { success: false, message: 'Sala cheia!' };
+        if (this.players.length >= this.maxPlayers) {
+            return { success: false, message: 'Sala cheia!' };
+        }
         
+        // CORREÇÃO: Verifica se o Jogador 1 já existe na sala
+        const hasPlayer1 = this.players.some(p => p.playerNumber === 1);
+        
+        // Se o 1 já existe, esse novo será o 2. Se não, será o 1.
+        const assignedNumber = hasPlayer1 ? 2 : 1;
+
         const newPlayer = {
             id: id,
-            score: 0, // Pontuação começa em 0
-            playerNumber: this.players.length + 1
+            score: 0,
+            playerNumber: assignedNumber, // Usa o número calculado corretamente
+            isReady: false
         };
+        
+        // Dica extra: Garantir que a lista fique ordenada (P1 sempre no índice 0, P2 no índice 1)
+        // Isso ajuda a não bagunçar os turnos
         this.players.push(newPlayer);
+        this.players.sort((a, b) => a.playerNumber - b.playerNumber);
+
         return { success: true, player: newPlayer };
     }
 
     removePlayer(id) {
-        this.players = this.players.filter(p => p.id !== id);
-        this.readyPlayers.delete(id);
-        this.stopTurnTimer(); // Para o relógio se alguém sair
-        this.gameActive = false;
+        const playerIndex = this.players.findIndex(p => p.id === id);
+        const wasGameActive = this.gameActive;
+
+        if (playerIndex !== -1) {
+            this.players.splice(playerIndex, 1); // Remove o jogador
+            this.readyPlayers.delete(id);
+        }
+
+        if (wasGameActive) {
+            this.stopTurnTimer();
+            this.gameActive = false;
+            // Retorna TRUE para avisar o app.js que precisamos declarar W.O.
+            return { action: 'WO_VICTORY' }; 
+        }
+
+        return { action: 'PLAYER_REMOVED' };
     }
 
     playerReady(id) {
@@ -81,11 +107,15 @@ class GameManager {
     }
 
     nextTurn() {
-        this.flippedCards = []; // Limpa cartas viradas (se houver)
-        // Alterna entre 0 e 1 (se era 0 vira 1, se era 1 vira 0)
+        // CORREÇÃO: Antes de trocar de jogador, fecha as cartas que sobraram abertas
+        this.resetFlippedCards(); 
+
+        // Alterna entre 0 e 1
         this.currentPlayerIndex = this.currentPlayerIndex === 0 ? 1 : 0;
-        this.startTurnTimer(); // Reinicia o relógio para o próximo
-    }
+            
+        // Inicia o tempo do próximo
+        this.startTurnTimer(); 
+        }
 
     // --- LÓGICA DO CLIQUE ATUALIZADA ---
     flipCard(cardId, playerId) {
@@ -159,7 +189,8 @@ class GameManager {
 
     getWinner() {
         if (this.gameActive) return null;
-        return this.players.reduce.apply((prev, current) => (prev.score > current.score) ? prev : current);
+        if (this.players.length < 2) return null;
+        return this.players.reduce((prev, current) => (prev.score > current.score) ? prev : current);
     }
 }
 
