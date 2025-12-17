@@ -91,8 +91,8 @@ class GameManager {
     flipCard(cardId, playerId) {
         // 1. Valida se é a vez desse jogador
         const currentPlayer = this.players[this.currentPlayerIndex];
-        if (playerId !== currentPlayer.id) {
-            return { action: 'IGNORE' }; // Não é sua vez!
+        if (!currentPlayer || playerId !== currentPlayer.id) {
+            return { action: 'IGNORE' }; // Não é a vez dele
         }
 
         const card = this.cards.find(c => c.id === cardId);
@@ -123,11 +123,17 @@ class GameManager {
             const timeTaken = (Date.now() - this.turnStartTime) / 1000;
             const points = Math.max(10, Math.floor(100 - (timeTaken * 5))); 
             
-            currentPlayer.score += points;
+            this.players[this.currentPlayerIndex].score += points;
             
             this.flippedCards = [];
-            this.startTurnTimer(); // Reinicia o tempo para ele jogar de novo (Regra: acertou, joga de novo)
-            
+
+            const allMatched = this.cards.every(c => c.isMatched);
+            if (allMatched) {
+                this.gameActive = false; // Fim de jogo
+                return { action: 'GAME_OVER' };
+            }
+
+            this.startTurnTimer(); // Continua a vez do mesmo jogador
             return { action: 'MATCH' };
         } else {
             // ERROU! (O nextTurn será chamado pelo app.js após o delay visual)
@@ -146,8 +152,14 @@ class GameManager {
             board: this.cards,
             gameActive: this.gameActive,
             currentPlayerId: this.players[this.currentPlayerIndex]?.id, // Quem joga agora?
-            turnDeadline: Date.now() + this.TURN_LIMIT // Para o front mostrar barra de tempo
+            turnDeadline: this.turnDeadLine, // Para o front mostrar barra de tempo
+            winner: this.getWinner()
         };
+    }
+
+    getWinner() {
+        if (this.gameActive) return null;
+        return this.players.reduce.apply((prev, current) => (prev.score > current.score) ? prev : current);
     }
 }
 
